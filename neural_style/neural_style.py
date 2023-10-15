@@ -14,7 +14,13 @@ from torchvision import transforms
 import utils
 from transformer_net import TransformerNet
 from vgg import Vgg16
+from torch import mps
 
+from datetime import datetime
+
+now = datetime.now()
+current_time = now.strftime("%H:%M:%S")
+print("Current Time =", current_time)
 
 def check_paths(args):
     try:
@@ -28,14 +34,26 @@ def check_paths(args):
 
 
 def train(args):
+    @property
+    def device(self) -> torch.device:
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            return torch.device("mps")
+        else:
+            return torch.device("cpu")
+
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    if args.cuda:
+    if args.cuda == 1:
         torch.cuda.manual_seed(args.seed)
 
+    if args.cuda == 2:
+        torch.mps.manual_seed(args.seed)
+
     transform = transforms.Compose([
-        transforms.Scale(args.image_size),
+        transforms.Resize(args.image_size),
         transforms.CenterCrop(args.image_size),
         transforms.ToTensor(),
         transforms.Lambda(lambda x: x.mul(255))
@@ -56,10 +74,17 @@ def train(args):
     style = style_transform(style)
     style = style.repeat(args.batch_size, 1, 1, 1)
 
-    if args.cuda:
+    if args.cuda == 1:
         transformer.cuda()
         vgg.cuda()
         style = style.cuda()
+
+    if args.cuda == 2:
+        transformer = transformer.to(torch.device("mps"))
+        vgg = vgg.to(torch.device("mps"))
+        style = style.to(torch.device("mps"))
+
+
 
     style_v = Variable(style)
     style_v = utils.normalize_batch(style_v)
@@ -67,6 +92,8 @@ def train(args):
     gram_style = [utils.gram_matrix(y) for y in features_style]
 
     for e in range(args.epochs):
+        # if torch.backends.mps.is_available():
+        #     transformer = transformer.to(torch.device("mps"))
         transformer.train()
         agg_content_loss = 0.
         agg_style_loss = 0.
@@ -76,8 +103,12 @@ def train(args):
             count += n_batch
             optimizer.zero_grad()
             x = Variable(x)
-            if args.cuda:
+            if args.cuda == 1:
                 x = x.cuda()
+
+            if args.cuda == 2:
+                x = x.to(torch.device("mps"))
+
 
             y = transformer(x)
 
@@ -100,8 +131,8 @@ def train(args):
             total_loss.backward()
             optimizer.step()
 
-            agg_content_loss += content_loss.data[0]
-            agg_style_loss += style_loss.data[0]
+            agg_content_loss += content_loss.data
+            agg_style_loss += style_loss.data
 
             if (batch_id + 1) % args.log_interval == 0:
                 mesg = "{}\tEpoch {}:\t[{}/{}]\tcontent: {:.6f}\tstyle: {:.6f}\ttotal: {:.6f}".format(
@@ -111,6 +142,9 @@ def train(args):
                     (agg_content_loss + agg_style_loss) / (batch_id + 1)
                 )
                 print(mesg)
+                now = datetime.now()
+                current_time = now.strftime("%H:%M:%S")
+                print("Current Time =", current_time)
 
             if args.checkpoint_model_dir is not None and (batch_id + 1) % args.checkpoint_interval == 0:
                 transformer.eval()
@@ -121,8 +155,9 @@ def train(args):
                 ckpt_model_path = os.path.join(
                     args.checkpoint_model_dir, ckpt_model_filename)
                 torch.save(transformer.state_dict(), ckpt_model_path)
-                if args.cuda:
+                if args.cuda == 1:
                     transformer.cuda()
+
                 transformer.train()
 
     # save model
@@ -135,6 +170,9 @@ def train(args):
     torch.save(transformer.state_dict(), save_model_path)
 
     print("\nDone, trained model saved at", save_model_path)
+    now = datetime.now()
+    current_time = now.strftime("%H:%M:%S")
+    print("Current Time =", current_time)
 
 
 def stylize(args):
@@ -199,7 +237,7 @@ def main():
     train_arg_parser.add_argument("--style-size", type=int, default=None,
                                   help="size of style-image, default is the original size of style image")
     train_arg_parser.add_argument("--cuda", type=int, required=True,
-                                  help="set it to 1 for running on GPU, 0 for CPU")
+                                  help="set it to 1 for running on GPU, 0 for CPU and 2 for MPS")
     train_arg_parser.add_argument("--seed", type=int, default=42,
                                   help="random seed for training")
     train_arg_parser.add_argument("--content-weight", type=float, default=1e5,
@@ -224,15 +262,19 @@ def main():
     eval_arg_parser.add_argument("--model", type=str, required=True,
                                  help="saved model to be used for stylizing the image")
     eval_arg_parser.add_argument("--cuda", type=int, required=True,
-                                 help="set it to 1 for running on GPU, 0 for CPU")
+                                 help="set it to 1 for running on GPU, 0 for CPU and 2 for MPS")
 
     args = main_arg_parser.parse_args()
 
     if args.subcommand is None:
         print("ERROR: specify either train or eval")
         sys.exit(1)
-    if args.cuda and not torch.cuda.is_available():
+    if args.cuda == 1 and not torch.cuda.is_available():
         print("ERROR: cuda is not available, try running on CPU")
+        sys.exit(1)
+
+    if args.cuda == 2 and not torch.backends.mps.is_available():
+        print("ERROR: MPS is not available, try running on CPU")
         sys.exit(1)
 
     if args.subcommand == "train":

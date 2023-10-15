@@ -4,6 +4,22 @@ Last Update Time: 31-Jan-2021
 
 This repository contains a pytorch implementation of an algorithm for artistic style transfer. The algorithm can be used to mix the content of an image with the style of another image. For example, here is a photograph of a door arch rendered in the style of a stained glass painting.
 
+##Some links that helped it run on Apple silicon
+* https://github.com/NVIDIA/flownet2-pytorch/issues/113
+* https://developer.apple.com/metal/pytorch/
+* https://pytorch.org/get-started/locally/ - to get appropriate installer for tensorflow.
+* Working through MPS backend https://pytorch.org/docs/stable/notes/mps.html
+* CUDA equivalent MPS Functions available for us https://pytorch.org/docs/stable/mps.html
+* When there is "No MPS Backend complain" https://github.com/pytorch/pytorch/issues/100165
+* Some reading about transforms https://pytorch.org/vision/0.15/transforms.html
+* If there is tensor size mismatch because of aspect ratio issues https://github.com/huggingface/transformers/issues/12817
+* Reading MobileNet https://github.com/AyeshaShafique/neural-style-transfer-mobilenet
+* Neural Style on TensorFlow - Old Article https://medium.com/@aieeshashafique/neural-image-styling-in-tensorflow-509c9561771d
+* Combining this for Video https://github.com/eriklindernoren/Fast-Neural-Style-Transfer
+* https://github.com/cuicaihao/fast_neural_style/blob/master/README.md
+* Fast Style https://github.com/cryu854/FastStyle
+
+
 ## Requirement:
 
 Development Environment:
