@@ -18,6 +18,8 @@ This repository contains a pytorch implementation of an algorithm for artistic s
 * Combining this for Video https://github.com/eriklindernoren/Fast-Neural-Style-Transfer
 * https://github.com/cuicaihao/fast_neural_style/blob/master/README.md
 * Fast Style https://github.com/cryu854/FastStyle
+* Download coco models https://gist.githubusercontent.com/mkocabas/a6177fc00315403d31572e17700d7fd9/raw/a6ad5e9d7567187b65f222115dffcb4b8667e047/coco.sh
+* 
 
 
 ## Requirement:
